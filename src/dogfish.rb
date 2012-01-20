@@ -9,28 +9,14 @@ def _(v)
 end
 
 
-class Dogfish < Gtk::Window
+class SearchAgentFind
 
-#	include GetText
-#	bindtextdomain("dogfish")
+	def initialize(dogfish)
+		@dogfish = dogfish
+	end
 
-	def initialize
-		super
-
-		@found_files = []
-
-		@window = Gtk::Window.new
-		@window_box = Gtk::VBox.new()
-		@window.add @window_box
-
-		@window.title = "dogfish"
-		@window.default_width = 750
-		@window.default_height = 500
-
-		# Search box
-
-		@search_box = Gtk::VBox.new()
-		@window_box.pack_start @search_box, false
+	def build_gui(box)
+		@search_box = box
 
 		t = Gtk::Table.new(3, 2)
 		@search_box.pack_start t, false
@@ -47,6 +33,141 @@ class Dogfish < Gtk::Window
 		@entry_find_path = Gtk::Entry.new()
 		t.attach @entry_find_path, 1, 2, 1, 2
 		@entry_find_path.text = '/'
+	end
+
+	def do_search
+		text = @entry_find_text.text
+		path = @entry_find_path.text
+
+		f1r, f1 = IO.pipe
+		f2r, f2 = IO.pipe
+
+		pid = fork do
+			f1r.close
+			f2r.close
+			exec 'find', path, \
+				'(', '-name', "*#{text}*", '-fprintf', "/dev/fd/#{f1.to_i}", '%s %y %p\n', ')', ',', \
+				'(', '-type', "d", '-fprint', "/dev/fd/#{f2.to_i}", ')'
+			exit!
+		end
+
+		f1.close
+		f2.close
+
+		buffer1 = ''
+		buffer2 = ''
+
+		f1_eof = false
+
+		fds = [f1r, f2r]
+
+		catch (:done) do
+			while 1
+				if @dogfish.force_exit
+					Gtk.main_quit
+					return
+				end
+
+				throw :done if @dogfish.stop_search
+
+				rs, ws = IO.select(fds)
+				rs.each do |f|
+					begin
+						result = f.read_nonblock(1024)
+					rescue EOFError => e
+						result = ''
+						if f == f1r
+							f1_eof = true
+						else
+							fds = [f1r]
+						end
+					end
+					if f == f1r
+						buffer1 += result
+						lines = buffer1.split("\n")
+
+						if !f1_eof
+							buffer1 = lines.pop
+						end
+
+						lines.each do |line|
+							line = line.strip
+							next if line == ''
+
+							#puts "found #{line}"
+
+							size, type, filename = line.split(' ', 3)
+							h = Hash[
+								'filename' => filename,
+								'size' => size,
+								'type' => type,
+							]
+							@dogfish.find_add_result(h)
+						end
+
+						if lines.size > 0
+							@dogfish.find_update_stat
+						end
+
+						throw :done if f1_eof
+
+					elsif f == f2r
+						buffer2 += result
+						lines = buffer2.split("\n")
+						buffer2 = lines.pop
+						if lines.size > 0
+							line = lines.pop
+							#puts "dir #{line}"
+							@dogfish.find_set_status(_('Searching in %s') % line)
+						end
+					end
+				end
+			end # while
+
+		end # catch
+
+		ensure
+
+		f1r.close
+		f2r.close
+
+		Process.kill("KILL", pid)
+
+	end
+end
+
+class Dogfish < Gtk::Window
+
+#	include GetText
+#	bindtextdomain("dogfish")
+
+	attr_reader :force_exit
+	attr_reader :stop_search
+
+	def initialize
+		super
+
+		@agent = SearchAgentFind.new(self)
+
+		@found_files = []
+
+		@window = Gtk::Window.new
+		@window_box = Gtk::VBox.new()
+		@window.add @window_box
+
+		@window.title = "dogfish"
+		@window.default_width = 750
+		@window.default_height = 500
+
+		# Search box
+
+		@search_box = Gtk::HBox.new()
+		@window_box.pack_start @search_box, false
+
+		agent_gui_box = Gtk::VBox.new()
+		@search_box.pack_start agent_gui_box, true
+
+		@agent.build_gui(agent_gui_box)
 
 		@button_find = Gtk::Button.new(Gtk::Stock::FIND)
 		@search_box.pack_start @button_find, false
@@ -104,7 +225,7 @@ class Dogfish < Gtk::Window
 		}
 
 
-		@do_exit = false
+		@force_exit = false
 		@stop_search = false
 		@searching = false
 
@@ -152,7 +273,7 @@ class Dogfish < Gtk::Window
 
 	def on_button_close_clicked
 		# Stop GTK, since we are done
-		@do_exit = true;
+		@force_exit = true;
 		Gtk.main_quit
 	end
 
@@ -195,103 +316,13 @@ class Dogfish < Gtk::Window
 		@treeview_files.model = @listmodel
 		@treeview_files.columns_autosize()
 
-
 		@found_files = []
 
-		text = @entry_find_text.text
-		path = @entry_find_path.text
+		find_update_stat
 
-		f1r, f1 = IO.pipe
-		f2r, f2 = IO.pipe
-
-		pid = fork do
-			f1r.close
-			f2r.close
-			exec 'find', path, \
-				'(', '-name', "*#{text}*", '-fprintf', "/dev/fd/#{f1.to_i}", '%s %y %p\n', ')', ',', \
-				'(', '-type', "d", '-fprint', "/dev/fd/#{f2.to_i}", ')'
-			exit!
-		end
-
-		f1.close
-		f2.close
-
-		buffer1 = ''
-		buffer2 = ''
-
-		f1_eof = false
-
-		fds = [f1r, f2r]
-
-		catch (:done) do
-			while 1
-				if @do_exit
-					Gtk.main_quit
-					return
-				end
-
-				throw :done if @stop_search
-
-				rs, ws = IO.select(fds)
-				rs.each do |f|
-					begin
-						result = f.read_nonblock(1024)
-					rescue EOFError => e
-						result = ''
-						if f == f1r
-							f1_eof = true
-						else
-							fds = [f1r]
-						end
-					end
-					if f == f1r
-						buffer1 += result
-						lines = buffer1.split("\n")
-
-						if !f1_eof
-							buffer1 = lines.pop
-						end
-
-						lines.each do |line|
-							line = line.strip
-							next if line == ''
-
-							#puts "found #{line}"
-
-							size, type, filename = line.split(' ', 3)
-							h = Hash[
-								'filename' => filename,
-								'size' => size,
-								'type' => type,
-							]
-							find_add_result(h)
-						end
-
-						if lines.size > 0
-							find_update_stat
-						end
-
-						throw :done if f1_eof
-
-					elsif f == f2r
-						buffer2 += result
-						lines = buffer2.split("\n")
-						buffer2 = lines.pop
-						if lines.size > 0
-							line = lines.pop
-							#puts "dir #{line}"
-							find_set_status(_('Searching in %s') % line)
-						end
-					end
-				end
-			end # while
-
-		end # catch
+		@agent.do_search
 
 		ensure
-
-		f1r.close
-		f2r.close
 
 		find_update_stat
 
@@ -304,8 +335,6 @@ class Dogfish < Gtk::Window
 		@button_find.label = Gtk::Stock::FIND
 
 		@searching = false
-
-		Process.kill("KILL", pid)
 
 	end
 
