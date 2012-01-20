@@ -21,37 +21,37 @@ class SearchAgentFind
 		t = Gtk::Table.new(4, 4)
 		@search_box.pack_start t, false
 
-		l = Gtk::Label.new(_('File name'))
+		l = Gtk::Label.new(_('_File name'), true)
 		l.set_alignment(0, 0.5)
 		t.attach l, 0, 1, 0, 1, Gtk::SHRINK|Gtk::FILL, Gtk::FILL, 2
-		@entry_find_text = Gtk::Entry.new()
+		l.mnemonic_widget = @entry_find_text = Gtk::Entry.new()
 		t.attach @entry_find_text, 1, 4, 0, 1
 
-		l = Gtk::Label.new(_('Path'))
+		l = Gtk::Label.new(_('_Path'), true)
 		l.set_alignment(0, 0.5)
 		t.attach l, 0, 1, 1, 2, Gtk::SHRINK|Gtk::FILL, Gtk::FILL, 2
-		@entry_find_path = Gtk::Entry.new()
+		l.mnemonic_widget = @entry_find_path = Gtk::Entry.new()
 		t.attach @entry_find_path, 1, 4, 1, 2
 		@entry_find_path.text = '/'
 
-		l = Gtk::Label.new(_('Size'))
+		l = Gtk::Label.new(_('_Size'), true)
 		l.set_alignment(0, 0.5)
 		t.attach l, 0, 1, 2, 3, Gtk::SHRINK|Gtk::FILL, Gtk::FILL, 2
-		@entry_find_size = Gtk::Entry.new()
+		l.mnemonic_widget = @entry_find_size = Gtk::Entry.new()
 		t.attach @entry_find_size, 1, 2, 2, 3
 		@entry_find_size.text = '*'
 
-		l = Gtk::Label.new(_('Type'))
+		l = Gtk::Label.new(_('_Type'), true)
 		l.set_alignment(0, 0.5)
 		t.attach l, 2, 3, 2, 3, Gtk::SHRINK|Gtk::FILL, Gtk::FILL, 2
-		@entry_find_type = Gtk::Entry.new()
+		l.mnemonic_widget = @entry_find_type = Gtk::Entry.new()
 		t.attach @entry_find_type, 3, 4, 2, 3
 		@entry_find_type.text = '*'
 
-		l = Gtk::Label.new(_('Max Depth'))
+		l = Gtk::Label.new(_('Max _Depth'), true)
 		l.set_alignment(0, 0.5)
 		t.attach l, 0, 1, 3, 4, Gtk::SHRINK|Gtk::FILL, Gtk::FILL, 2
-		@entry_find_maxdepth = Gtk::Entry.new()
+		l.mnemonic_widget = @entry_find_maxdepth = Gtk::Entry.new()
 		t.attach @entry_find_maxdepth, 1, 2, 3, 4
 		@entry_find_maxdepth.text = '*'
 
