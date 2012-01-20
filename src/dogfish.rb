@@ -23,34 +23,34 @@ class SearchAgentFind
 
 		l = Gtk::Label.new(_('File name'))
 		l.set_alignment(0, 0.5)
-		t.attach l, 0, 1, 0, 1, Gtk::SHRINK, Gtk::FILL, 2
+		t.attach l, 0, 1, 0, 1, Gtk::SHRINK|Gtk::FILL, Gtk::FILL, 2
 		@entry_find_text = Gtk::Entry.new()
 		t.attach @entry_find_text, 1, 4, 0, 1
 
 		l = Gtk::Label.new(_('Path'))
 		l.set_alignment(0, 0.5)
-		t.attach l, 0, 1, 1, 2, Gtk::SHRINK, Gtk::FILL, 2
+		t.attach l, 0, 1, 1, 2, Gtk::SHRINK|Gtk::FILL, Gtk::FILL, 2
 		@entry_find_path = Gtk::Entry.new()
 		t.attach @entry_find_path, 1, 4, 1, 2
 		@entry_find_path.text = '/'
 
 		l = Gtk::Label.new(_('Size'))
 		l.set_alignment(0, 0.5)
-		t.attach l, 0, 1, 2, 3, Gtk::SHRINK, Gtk::FILL, 2
+		t.attach l, 0, 1, 2, 3, Gtk::SHRINK|Gtk::FILL, Gtk::FILL, 2
 		@entry_find_size = Gtk::Entry.new()
 		t.attach @entry_find_size, 1, 2, 2, 3
 		@entry_find_size.text = '*'
 
 		l = Gtk::Label.new(_('Type'))
 		l.set_alignment(0, 0.5)
-		t.attach l, 2, 3, 2, 3, Gtk::SHRINK, Gtk::FILL, 2
+		t.attach l, 2, 3, 2, 3, Gtk::SHRINK|Gtk::FILL, Gtk::FILL, 2
 		@entry_find_type = Gtk::Entry.new()
 		t.attach @entry_find_type, 3, 4, 2, 3
 		@entry_find_type.text = '*'
 
 		l = Gtk::Label.new(_('Max Depth'))
 		l.set_alignment(0, 0.5)
-		t.attach l, 0, 1, 3, 4, Gtk::SHRINK, Gtk::FILL, 2
+		t.attach l, 0, 1, 3, 4, Gtk::SHRINK|Gtk::FILL, Gtk::FILL, 2
 		@entry_find_maxdepth = Gtk::Entry.new()
 		t.attach @entry_find_maxdepth, 1, 2, 3, 4
 		@entry_find_maxdepth.text = '*'
@@ -327,7 +327,6 @@ class Dogfish < Gtk::Window
 	end
 
 	def on_button_close_clicked
-		# Stop GTK, since we are done
 		@force_exit = true;
 		Gtk.main_quit
 	end
