@@ -18,26 +18,51 @@ class SearchAgentFind
 	def build_gui(box)
 		@search_box = box
 
-		t = Gtk::Table.new(3, 2)
+		t = Gtk::Table.new(4, 4)
 		@search_box.pack_start t, false
 
 		l = Gtk::Label.new(_('File name'))
 		l.set_alignment(0, 0.5)
 		t.attach l, 0, 1, 0, 1, Gtk::SHRINK, Gtk::FILL, 2
 		@entry_find_text = Gtk::Entry.new()
-		t.attach @entry_find_text, 1, 2, 0, 1
+		t.attach @entry_find_text, 1, 4, 0, 1
 
 		l = Gtk::Label.new(_('Path'))
 		l.set_alignment(0, 0.5)
 		t.attach l, 0, 1, 1, 2, Gtk::SHRINK, Gtk::FILL, 2
 		@entry_find_path = Gtk::Entry.new()
-		t.attach @entry_find_path, 1, 2, 1, 2
+		t.attach @entry_find_path, 1, 4, 1, 2
 		@entry_find_path.text = '/'
+
+		l = Gtk::Label.new(_('Size'))
+		l.set_alignment(0, 0.5)
+		t.attach l, 0, 1, 2, 3, Gtk::SHRINK, Gtk::FILL, 2
+		@entry_find_size = Gtk::Entry.new()
+		t.attach @entry_find_size, 1, 2, 2, 3
+		@entry_find_size.text = '*'
+
+		l = Gtk::Label.new(_('Type'))
+		l.set_alignment(0, 0.5)
+		t.attach l, 2, 3, 2, 3, Gtk::SHRINK, Gtk::FILL, 2
+		@entry_find_type = Gtk::Entry.new()
+		t.attach @entry_find_type, 3, 4, 2, 3
+		@entry_find_type.text = '*'
+
+		l = Gtk::Label.new(_('Max Depth'))
+		l.set_alignment(0, 0.5)
+		t.attach l, 0, 1, 3, 4, Gtk::SHRINK, Gtk::FILL, 2
+		@entry_find_maxdepth = Gtk::Entry.new()
+		t.attach @entry_find_maxdepth, 1, 2, 3, 4
+		@entry_find_maxdepth.text = '*'
+
 	end
 
 	def do_search
 		text = @entry_find_text.text
 		path = @entry_find_path.text
+		size = @entry_find_size.text
+		type = @entry_find_type.text
+		maxdepth = @entry_find_maxdepth.text
 
 		f1r, f1 = IO.pipe
 		f2r, f2 = IO.pipe
@@ -45,9 +70,39 @@ class SearchAgentFind
 		pid = fork do
 			f1r.close
 			f2r.close
-			exec 'find', path, \
-				'(', '-name', "*#{text}*", '-fprintf', "/dev/fd/#{f1.to_i}", '%s %y %p\n', ')', ',', \
+
+			text = "*#{text}*"if !text[/[*?\[\]]/] && text != ''
+			p_text = []
+			p_text = ['-name', text] if text != ''
+
+			p_size = []
+			if size != '' && size != '*'
+				size = size + 'c' if size[size.size-1][/[0-9]/]
+				p_size = ['-size', size]
+			end
+
+			p_type = []
+			type = '' if type[/[*]/]
+			type.scan(/[bcdpflsD]/) do |m|
+				p_type << '-o' if p_type.size > 0
+				p_type << '-type'
+				p_type << m
+			end
+			p_type = ['(', *p_type, ')'] if p_type.size > 0
+
+			p_maxdepth = []
+			maxdepth = maxdepth.strip
+			if maxdepth != '' && maxdepth != '*'
+				maxdepth = maxdepth.to_i
+				p_maxdepth = ['-maxdepth', maxdepth.to_s] if maxdepth >= 0
+			end
+
+			command = 'find', path, *p_maxdepth, \
+				'(', *p_text, *p_type, *p_size, '-fprintf', "/dev/fd/#{f1.to_i}", '%s %y %p\n', ')', ',', \
 				'(', '-type', "d", '-fprint', "/dev/fd/#{f2.to_i}", ')'
+
+p command
+			exec *command
 			exit!
 		end
 
@@ -291,9 +346,9 @@ class Dogfish < Gtk::Window
 		row[0] = h['filename']
 
 		if h['type'] == 'd'
-			row[1] = -1
+			row[1] = _('Directory')
 		else
-			row[1] = h['size'].to_i
+			row[1] = h['size']
 		end
 
 		h['list_row'] = row
@@ -312,7 +367,7 @@ class Dogfish < Gtk::Window
 
 		@button_find.label = Gtk::Stock::CANCEL
 
-		@listmodel = Gtk::ListStore.new(String, Integer)
+		@listmodel = Gtk::ListStore.new(String, String)
 		@treeview_files.model = @listmodel
 		@treeview_files.columns_autosize()
 
