@@ -54,7 +54,12 @@ class HistoryDispatcher
 		end
 	end
 
-	def add_item_to_history(agent_id, widget_id)
+	def save(agent_id, widget_id = nil)
+
+		if widget_id.nil?
+			@widgets[agent_id].each_key { |k| save(agent_id, k) if !k.nil? }
+			return
+		end
 
 		new_item = @widgets[agent_id][widget_id].child().text
 
@@ -136,12 +141,8 @@ class SearchAgentFind
 		size = @entry_find_size.child().text
 		type = @entry_find_type.child().text
 		maxdepth = @entry_find_maxdepth.child().text
-		@history_dispatcher.add_item_to_history("find", "file_name")
-		@history_dispatcher.add_item_to_history("find", "path")
-		@history_dispatcher.add_item_to_history("find", "size")
-		@history_dispatcher.add_item_to_history("find", "type")
-		@history_dispatcher.add_item_to_history("find", "max_depth")
-                   
+		@history_dispatcher.save('find')
+
 		f1r, f1 = IO.pipe
 		f2r, f2 = IO.pipe
 
