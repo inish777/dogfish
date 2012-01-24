@@ -8,11 +8,61 @@ def _(v)
 	v
 end
 
+class HistoryDispatcher
+
+	def initialize()
+		@widgets = Hash.new(Hash.new)
+	end
+
+	def get_history_list(agent_id, widget_id)
+		history_list = Array.new
+		a = ENV['XDG_CONFIG_HOME'] + "/dogfish/" + agent_id + "/" + widget_id + "/history"
+		if(File::exist?(a) == false) then
+			return nil
+		end
+
+		file = File.new(a, "r")
+		while(line = file.gets())
+			history_list.push(line.strip())		
+		end
+		file.close()
+		return history_list
+	end
+
+	def register_widget(widget, agent_id, widget_id)
+		@widgets[agent_id][widget_id] = widget
+		history_list = get_history_list(agent_id, widget_id)
+		if (history_list != nil) then
+			history_list.each{|item| @widgets[agent_id][widget_id].append_text(item)}
+		end
+	end 
+
+	def add_item_to_history(agent_id, widget_id)
+		if (Dir::exist?(ENV['XDG_CONFIG_HOME'] + "/dogfish/") == false) then
+			Dir::mkdir(ENV['XDG_CONFIG_HOME'] + "/dogfish/")
+		end
+
+		if (Dir::exist?(ENV['XDG_CONFIG_HOME'] + "/dogfish/" + agent_id) == false) then
+			Dir::mkdir(ENV['XDG_CONFIG_HOME'] + "/dogfish/" + agent_id)
+		end
+
+		if (Dir::exist?(ENV['XDG_CONFIG_HOME'] + "/dogfish/" + agent_id + "/" + widget_id) == false) then
+			Dir::mkdir(ENV['XDG_CONFIG_HOME'] + "/dogfish/" + agent_id + "/" + widget_id)
+		end 
+
+		a = ENV['XDG_CONFIG_HOME'] + "/dogfish/" + agent_id + "/" + widget_id + "/history"
+		file = File.new(a, "a")
+		file.puts @widgets[agent_id][widget_id].child().text
+		file.close()	
+ 	end
+
+end
 
 class SearchAgentFind
 
-	def initialize(dogfish)
+	def initialize(dogfish, history_dispatcher)
 		@dogfish = dogfish
+		@history_dispatcher = history_dispatcher
 	end
 
 	def build_gui(box)
@@ -24,46 +74,55 @@ class SearchAgentFind
 		l = Gtk::Label.new(_('_File name'), true)
 		l.set_alignment(0, 0.5)
 		t.attach l, 0, 1, 0, 1, Gtk::SHRINK|Gtk::FILL, Gtk::FILL, 2
-		l.mnemonic_widget = @entry_find_text = Gtk::Entry.new()
+		l.mnemonic_widget = @entry_find_text = Gtk::ComboBoxEntry.new()
 		t.attach @entry_find_text, 1, 4, 0, 1
+		@history_dispatcher.register_widget(@entry_find_text, "find", "file_name")
 
 		l = Gtk::Label.new(_('_Path'), true)
 		l.set_alignment(0, 0.5)
 		t.attach l, 0, 1, 1, 2, Gtk::SHRINK|Gtk::FILL, Gtk::FILL, 2
-		l.mnemonic_widget = @entry_find_path = Gtk::Entry.new()
+		l.mnemonic_widget = @entry_find_path = Gtk::ComboBoxEntry.new()
 		t.attach @entry_find_path, 1, 4, 1, 2
-		@entry_find_path.text = '/'
+		@entry_find_path.child().text = "/"
+		@history_dispatcher.register_widget(@entry_find_path, "find", "path")
 
 		l = Gtk::Label.new(_('_Size'), true)
 		l.set_alignment(0, 0.5)
 		t.attach l, 0, 1, 2, 3, Gtk::SHRINK|Gtk::FILL, Gtk::FILL, 2
-		l.mnemonic_widget = @entry_find_size = Gtk::Entry.new()
+		l.mnemonic_widget = @entry_find_size = Gtk::ComboBoxEntry.new()
 		t.attach @entry_find_size, 1, 2, 2, 3
-		@entry_find_size.text = '*'
+		@entry_find_size.child().text = "*"
+		@history_dispatcher.register_widget(@entry_find_size, "find", "size")
 
 		l = Gtk::Label.new(_('_Type'), true)
 		l.set_alignment(0, 0.5)
 		t.attach l, 2, 3, 2, 3, Gtk::SHRINK|Gtk::FILL, Gtk::FILL, 2
-		l.mnemonic_widget = @entry_find_type = Gtk::Entry.new()
+		l.mnemonic_widget = @entry_find_type = Gtk::ComboBoxEntry.new()
 		t.attach @entry_find_type, 3, 4, 2, 3
-		@entry_find_type.text = '*'
+		@entry_find_type.child().text = "*"
+		@history_dispatcher.register_widget(@entry_find_type, "find", "type")
 
 		l = Gtk::Label.new(_('Max _Depth'), true)
 		l.set_alignment(0, 0.5)
 		t.attach l, 0, 1, 3, 4, Gtk::SHRINK|Gtk::FILL, Gtk::FILL, 2
-		l.mnemonic_widget = @entry_find_maxdepth = Gtk::Entry.new()
+		l.mnemonic_widget = @entry_find_maxdepth = Gtk::ComboBoxEntry.new()
 		t.attach @entry_find_maxdepth, 1, 2, 3, 4
-		@entry_find_maxdepth.text = '*'
-
+		@entry_find_maxdepth.child().text = "*"
+		@history_dispatcher.register_widget(@entry_find_maxdepth, "find", "max_depth")
 	end
 
 	def do_search
-		text = @entry_find_text.text
-		path = @entry_find_path.text
-		size = @entry_find_size.text
-		type = @entry_find_type.text
-		maxdepth = @entry_find_maxdepth.text
-
+		text = @entry_find_text.child().text	
+		path = @entry_find_path.child().text
+		size = @entry_find_size.child().text
+		type = @entry_find_type.child().text
+		maxdepth = @entry_find_maxdepth.child().text
+		@history_dispatcher.add_item_to_history("find", "file_name")
+		@history_dispatcher.add_item_to_history("find", "path")
+		@history_dispatcher.add_item_to_history("find", "size")
+		@history_dispatcher.add_item_to_history("find", "type")
+		@history_dispatcher.add_item_to_history("find", "max_depth")
+                   
 		f1r, f1 = IO.pipe
 		f2r, f2 = IO.pipe
 
@@ -189,6 +248,7 @@ p command
 		Process.kill("KILL", pid)
 
 	end
+
 end
 
 class Dogfish < Gtk::Window
@@ -201,8 +261,8 @@ class Dogfish < Gtk::Window
 
 	def initialize
 		super
-
-		@agent = SearchAgentFind.new(self)
+		@history_dispatcher = HistoryDispatcher.new
+		@agent = SearchAgentFind.new(self, @history_dispatcher)
 
 		@found_files = []
 
@@ -405,5 +465,3 @@ class Dogfish < Gtk::Window
 end
 
 Dogfish.new
-
-
