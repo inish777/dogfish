@@ -92,7 +92,7 @@ class SearchAgentFind
 	def build_gui(box)
 		@search_box = box
 
-		t = Gtk::Table.new(4, 4)
+		t = Gtk::Table.new(5, 4)
 		@search_box.pack_start t, false
 
 		l = Gtk::Label.new(_('_File name'), true)
@@ -133,6 +133,60 @@ class SearchAgentFind
 		t.attach @entry_find_maxdepth, 1, 2, 3, 4
 		@entry_find_maxdepth.child().text = "*"
 		@history_dispatcher.register_widget(@entry_find_maxdepth, "find", "max_depth")
+
+		l = Gtk::Label.new(_('_Content'), true)
+		l.set_alignment(0, 0.5)
+		t.attach l, 0, 1, 4, 5, Gtk::SHRINK|Gtk::FILL, Gtk::FILL, 2
+		l.mnemonic_widget = @entry_content = Gtk::ComboBoxEntry.new()
+		t.attach @entry_content, 1, 4, 4, 5
+		@entry_content.child().text = ''
+		@history_dispatcher.register_widget(@entry_content, "find", "content")
+
+	end
+
+	def grep(h, pattern)
+#puts "Scanning file #{h['filename']}"
+		return if !File.readable?(h['filename'])
+
+		linenr = 1
+		File.open(h['filename']) do |file|
+			restart = false
+			begin
+				while !file.eof
+					line = file.gets
+					if line[pattern]
+						h1 = h.clone
+						h1['line'] = linenr
+						h1['content'] = line.sub("\n", '')
+						@dogfish.find_add_result(h1)
+					end
+					linenr += 1
+					if linenr % 200 == 0
+						return if @dogfish.update_gui
+					end
+				end
+			rescue ArgumentError => e
+				restart = true
+			end
+
+			if restart
+				while !file.eof
+					line = file.gets
+					line = line.
+						force_encoding("UTF-8").encode("UTF-16BE", :invalid=>:replace, :replace=>"?").encode("UTF-8")
+					if line[pattern]
+						h1 = h.clone
+						h1['line'] = linenr
+						h1['content'] = line.sub("\n", '')
+						@dogfish.find_add_result(h1)
+					end
+					linenr += 1
+					if linenr % 50 == 0
+						return if @dogfish.update_gui
+					end
+				end
+			end
+		end
 	end
 
 	def do_search
@@ -141,6 +195,10 @@ class SearchAgentFind
 		size = @entry_find_size.child().text
 		type = @entry_find_type.child().text
 		maxdepth = @entry_find_maxdepth.child().text
+		content = @entry_content.child().text
+
+		pattern = Regexp.new(content)
+
 		@history_dispatcher.save('find')
 
 		f1r, f1 = IO.pipe
@@ -162,6 +220,7 @@ class SearchAgentFind
 
 			p_type = []
 			type = '' if type[/[*]/]
+			type = 'fl' if !content.empty?
 			type.scan(/[bcdpflsD]/) do |m|
 				p_type << '-o' if p_type.size > 0
 				p_type << '-type'
@@ -236,7 +295,11 @@ p command
 								'size' => size,
 								'type' => type,
 							]
-							@dogfish.find_add_result(h)
+							if !content.empty?
+								grep(h, pattern)
+							else
+								@dogfish.find_add_result(h)
+							end
 						end
 
 						if lines.size > 0
@@ -285,6 +348,7 @@ class Dogfish < Gtk::Window
 		@agent = SearchAgentFind.new(self, @history_dispatcher)
 
 		@found_files = []
+		@found_files_by_path = Hash[]
 
 		@window = Gtk::Window.new
 		@window_box = Gtk::VBox.new()
@@ -322,7 +386,7 @@ class Dogfish < Gtk::Window
 		@treeview_files.append_column(column)
 
 		renderer = Gtk::CellRendererText.new
-		column = Gtk::TreeViewColumn.new("Size", renderer, :text => 1)
+		column = Gtk::TreeViewColumn.new("Size", renderer, :text => 1, :visible => 2)
 		column.resizable = true
 		@treeview_files.append_column(column)
 
@@ -416,23 +480,41 @@ class Dogfish < Gtk::Window
 		Gtk.main_iteration while Gtk.events_pending?
 	end
 
+	def update_gui
+		Gtk.main_iteration while Gtk.events_pending?
+		@force_exit || @stop_search
+	end
+
 	def find_add_result(h)
 		h['filename'] = h['filename'].force_encoding("UTF-8").
 			encode("UTF-16BE", :invalid=>:replace, :replace=>"?").encode("UTF-8")
 
-		row = @listmodel.append
+		if !@found_files_by_path.has_key?(h['filename'])
 
-		row[0] = h['filename']
+			row = @listmodel.append(nil)
+			row[0] = h['filename']
 
-		if h['type'] == 'd'
-			row[1] = _('Directory')
-		else
-			row[1] = h['size']
+			if h['type'] == 'd'
+				row[1] = _('Directory')
+			else
+				row[1] = h['size']
+			end
+			row[2] = 1
+
+			h['list_row'] = row
+
+			@found_files << h
+			@found_files_by_path[h['filename']] = h
 		end
 
-		h['list_row'] = row
+		if h.has_key?('content') || h.has_key?('line')
+			row = @found_files_by_path[h['filename']]['list_row']
 
-		@found_files << h
+			subrow = @listmodel.append(row)
+			subrow[0] = h['line'].to_s + ': ' + h['content'].to_s
+			subrow[2] = 0
+
+		end
 	end
 
 	def find_set_status(text)
@@ -446,11 +528,12 @@ class Dogfish < Gtk::Window
 
 		@button_find.label = Gtk::Stock::CANCEL
 
-		@listmodel = Gtk::ListStore.new(String, String)
+		@listmodel = Gtk::TreeStore.new(String, String, Integer)
 		@treeview_files.model = @listmodel
 		@treeview_files.columns_autosize()
 
 		@found_files = []
+		@found_files_by_path = Hash[]
 
 		find_update_stat
 
