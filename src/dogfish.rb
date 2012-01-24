@@ -31,18 +31,19 @@ class HistoryDispatcher
 	end
 
 	def get_history_list(agent_id, widget_id)
-		history_list = Array.new
-		a = File.join($my_xdg_cache_home, 'history', agent_id, widget_id)
-		if(File::exist?(a) == false) then
-			return nil
+		path = File.join($my_xdg_cache_home, 'history', agent_id, widget_id)
+		return [] if !File::file?(path) || !File::readable?(path)
+
+		history = []
+
+		begin
+			File.open(path) { |f| history = f.read.lines }
+		rescue
 		end
 
-		file = File.new(a, "r")
-		while(line = file.gets())
-			history_list.push(line.strip())		
-		end
-		file.close()
-		return history_list
+		history = history.map {|line| line.sub("\n", '')} .uniq.first(20)
+
+		return history
 	end
 
 	def register_widget(widget, agent_id, widget_id)
