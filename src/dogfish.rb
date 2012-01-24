@@ -30,9 +30,9 @@ class HistoryDispatcher
 		@widgets = Hash.new(Hash.new)
 	end
 
-	def get_history_list(agent_id, widget_id)
+	def get_history_list(agent_id, widget_id, to_append = [])
 		path = File.join($my_xdg_cache_home, 'history', agent_id, widget_id)
-		return [] if !File::file?(path) || !File::readable?(path)
+		return to_append if !File::file?(path) || !File::readable?(path)
 
 		history = []
 
@@ -41,7 +41,7 @@ class HistoryDispatcher
 		rescue
 		end
 
-		history = history.map {|line| line.sub("\n", '')} .uniq.first(20)
+		history = [*to_append, *history].map {|line| line.sub("\n", '')} .uniq.first(20)
 
 		return history
 	end
@@ -52,15 +52,20 @@ class HistoryDispatcher
 		if (history_list != nil) then
 			history_list.each{|item| @widgets[agent_id][widget_id].append_text(item)}
 		end
-	end 
+	end
 
 	def add_item_to_history(agent_id, widget_id)
+
+		new_item = @widgets[agent_id][widget_id].child().text
+
+		history = get_history_list(agent_id, widget_id, [new_item])
+
 		path = File.join($my_xdg_cache_home, 'history', agent_id, widget_id)
 		Dir.mkdir_p(File.dirname(path))
 
-		file = File.new(path, "a")
-		file.puts @widgets[agent_id][widget_id].child().text
-		file.close()	
+		File.open(path, "w") do |file|
+			file.puts history.join("\n")
+		end
  	end
 
 end
