@@ -63,7 +63,14 @@ class HistoryDispatcher
 		path = File.join($my_xdg_cache_home, 'history', agent_id, widget_id)
 		Dir.mkdir_p(File.dirname(path))
 
-		File.open(path, "w") do |file|
+		# some sanity checks
+		if File.exist?(path)
+			return if !File.file?(path)   # strange thing happened, give up
+			return if !File.owned?(path)  # someone can steal our history?
+			File.chmod(0600, path)        # make sure no one can
+		end
+
+		File.open(path, "w", 0600) do |file|
 			file.puts history.join("\n")
 		end
  	end
