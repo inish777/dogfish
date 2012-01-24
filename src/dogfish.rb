@@ -12,6 +12,18 @@ end
 $xdg_cache_home = ENV['XDG_CACHE_HOME']
 $xdg_cache_home = File.join(ENV['HOME'], '.cache') if $xdg_cache_home.nil?
 
+$my_xdg_cache_home = File.join($xdg_cache_home, 'dogfish')
+
+
+class Dir
+	def self.mkdir_p(path)
+		return if exist? path
+		mkdir_p File.dirname(path)
+		mkdir(path)
+	end
+end
+
+
 class HistoryDispatcher
 
 	def initialize()
@@ -20,7 +32,7 @@ class HistoryDispatcher
 
 	def get_history_list(agent_id, widget_id)
 		history_list = Array.new
-		a = $xdg_cache_home + "/dogfish/" + agent_id + "/" + widget_id + "/history"
+		a = File.join($my_xdg_cache_home, 'history', agent_id, widget_id)
 		if(File::exist?(a) == false) then
 			return nil
 		end
@@ -42,20 +54,10 @@ class HistoryDispatcher
 	end 
 
 	def add_item_to_history(agent_id, widget_id)
-		if (Dir::exist?($xdg_cache_home + "/dogfish/") == false) then
-			Dir::mkdir($xdg_cache_home + "/dogfish/")
-		end
+		path = File.join($my_xdg_cache_home, 'history', agent_id, widget_id)
+		Dir.mkdir_p(File.dirname(path))
 
-		if (Dir::exist?($xdg_cache_home + "/dogfish/" + agent_id) == false) then
-			Dir::mkdir($xdg_cache_home + "/dogfish/" + agent_id)
-		end
-
-		if (Dir::exist?($xdg_cache_home + "/dogfish/" + agent_id + "/" + widget_id) == false) then
-			Dir::mkdir($xdg_cache_home + "/dogfish/" + agent_id + "/" + widget_id)
-		end 
-
-		a = $xdg_cache_home + "/dogfish/" + agent_id + "/" + widget_id + "/history"
-		file = File.new(a, "a")
+		file = File.new(path, "a")
 		file.puts @widgets[agent_id][widget_id].child().text
 		file.close()	
  	end
