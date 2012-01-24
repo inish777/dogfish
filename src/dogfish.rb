@@ -8,6 +8,10 @@ def _(v)
 	v
 end
 
+
+$xdg_cache_home = ENV['XDG_CACHE_HOME']
+$xdg_cache_home = File.join(ENV['HOME'], '.cache') if $xdg_cache_home.nil?
+
 class HistoryDispatcher
 
 	def initialize()
@@ -16,7 +20,7 @@ class HistoryDispatcher
 
 	def get_history_list(agent_id, widget_id)
 		history_list = Array.new
-		a = ENV['XDG_CONFIG_HOME'] + "/dogfish/" + agent_id + "/" + widget_id + "/history"
+		a = $xdg_cache_home + "/dogfish/" + agent_id + "/" + widget_id + "/history"
 		if(File::exist?(a) == false) then
 			return nil
 		end
@@ -38,19 +42,19 @@ class HistoryDispatcher
 	end 
 
 	def add_item_to_history(agent_id, widget_id)
-		if (Dir::exist?(ENV['XDG_CONFIG_HOME'] + "/dogfish/") == false) then
-			Dir::mkdir(ENV['XDG_CONFIG_HOME'] + "/dogfish/")
+		if (Dir::exist?($xdg_cache_home + "/dogfish/") == false) then
+			Dir::mkdir($xdg_cache_home + "/dogfish/")
 		end
 
-		if (Dir::exist?(ENV['XDG_CONFIG_HOME'] + "/dogfish/" + agent_id) == false) then
-			Dir::mkdir(ENV['XDG_CONFIG_HOME'] + "/dogfish/" + agent_id)
+		if (Dir::exist?($xdg_cache_home + "/dogfish/" + agent_id) == false) then
+			Dir::mkdir($xdg_cache_home + "/dogfish/" + agent_id)
 		end
 
-		if (Dir::exist?(ENV['XDG_CONFIG_HOME'] + "/dogfish/" + agent_id + "/" + widget_id) == false) then
-			Dir::mkdir(ENV['XDG_CONFIG_HOME'] + "/dogfish/" + agent_id + "/" + widget_id)
+		if (Dir::exist?($xdg_cache_home + "/dogfish/" + agent_id + "/" + widget_id) == false) then
+			Dir::mkdir($xdg_cache_home + "/dogfish/" + agent_id + "/" + widget_id)
 		end 
 
-		a = ENV['XDG_CONFIG_HOME'] + "/dogfish/" + agent_id + "/" + widget_id + "/history"
+		a = $xdg_cache_home + "/dogfish/" + agent_id + "/" + widget_id + "/history"
 		file = File.new(a, "a")
 		file.puts @widgets[agent_id][widget_id].child().text
 		file.close()	
@@ -242,10 +246,10 @@ p command
 
 		ensure
 
-		f1r.close
-		f2r.close
+		f1r.close if !f1r.nil?
+		f2r.close if !f2r.nil?
 
-		Process.kill("KILL", pid)
+		Process.kill("KILL", pid) if !pid.nil?
 
 	end
 
