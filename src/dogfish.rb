@@ -325,7 +325,13 @@ class SearchAgentFind
 					end
 					if f == f1r
 						buffer1 += result
-						lines = buffer1.split("\n")
+
+						#lines = buffer1.split("\n")
+						#String.split removes trailing whitespaces so we have to use String.scan
+						lines = buffer1.scan(/([^\n]+(\n|$))/).map{|v1, v2| v1}
+
+						#puts lines
+						#puts '-----'
 
 						if !f1_eof
 							buffer1 = lines.pop
