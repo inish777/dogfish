@@ -35,6 +35,10 @@ def human_readable_size(size)
 	end
 end
 
+def human_readable_size2(size)
+	size.to_s.reverse.scan(/..?.?/).join(' ').reverse
+end
+
 class HistoryDispatcher
 
 	def initialize()
@@ -226,8 +230,8 @@ class SearchAgentFind
 						return if @dogfish.update_gui
 					end
 				end
-			end
-		end
+			end # restart
+		end # open
 	end
 
 	def do_search
@@ -430,8 +434,10 @@ class Dogfish < Gtk::Window
 		@treeview_files.append_column(column)
 
 		renderer = Gtk::CellRendererText.new
+		renderer.xalign = 1
 		column = Gtk::TreeViewColumn.new("Size", renderer, :text => 1, :visible => 2)
 		column.resizable = true
+		column.alignment = 1
 		@treeview_files.append_column(column)
 
 		# Statusbar
@@ -544,7 +550,7 @@ class Dogfish < Gtk::Window
 			if h['type'] == 'd'
 				row[1] = _('Directory')
 			else
-				row[1] = h['size']
+				row[1] = human_readable_size2(h['size'])
 			end
 			row[2] = 1
 			row[3] = h['filename']
