@@ -46,12 +46,23 @@ class HistoryDispatcher
 		return history
 	end
 
+	def update_combo_box(widget, newitems)
+		olditems = widget.model.to_enum.map {|v| v[2][0]}
+		newitems = [*newitems, *olditems].uniq.first(20)
+
+		model = Gtk::TreeStore.new(String);
+		newitems.each do |item|
+			row = model.append(nil)
+			row[0] = item
+		end
+		widget.model = model
+	end
+
 	def register_widget(widget, agent_id, widget_id)
 		@widgets[agent_id][widget_id] = widget
+
 		history_list = get_history_list(agent_id, widget_id)
-		if (history_list != nil) then
-			history_list.each{|item| @widgets[agent_id][widget_id].append_text(item)}
-		end
+		update_combo_box(widget, history_list)
 	end
 
 	def save(agent_id, widget_id = nil)
@@ -62,6 +73,8 @@ class HistoryDispatcher
 		end
 
 		new_item = @widgets[agent_id][widget_id].child().text
+
+		update_combo_box(@widgets[agent_id][widget_id], new_item)
 
 		history = get_history_list(agent_id, widget_id, [new_item])
 
@@ -235,8 +248,11 @@ class SearchAgentFind
 				p_maxdepth = ['-maxdepth', maxdepth.to_s] if maxdepth >= 0
 			end
 
+			p_all = [*p_text, *p_type, *p_size]
+			p_all = ['-true'] if p_all.empty?
+
 			command = 'find', path, *p_maxdepth, \
-				'(', *p_text, *p_type, *p_size, '-fprintf', "/dev/fd/#{f1.to_i}", '%s %y %p\n', ')', ',', \
+				'(', *p_all, '-fprintf', "/dev/fd/#{f1.to_i}", '%s %y %p\n', ')', ',', \
 				'(', '-type', "d", '-fprint', "/dev/fd/#{f2.to_i}", ')'
 
 p command
