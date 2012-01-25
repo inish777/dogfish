@@ -283,11 +283,18 @@ class SearchAgentFind
 			p_all = [*p_text, *p_type, *p_size]
 			p_all = ['-true'] if p_all.empty?
 
-			command = 'find', path, *p_maxdepth, \
-				'(', *p_all, '-fprintf', "/dev/fd/#{f1.to_i}", '%s %y %p\n', ')', ',', \
-				'(', '-type', "d", '-fprint', "/dev/fd/#{f2.to_i}", ')'
+			program = 'find'
+			find_is_known_to_be_patched = false;
 
-#p command
+			#program = '/media/work/home/vadim/builds/findutils/bin/find'
+			#find_is_known_to_be_patched = true;
+
+			f2 = f1 if (find_is_known_to_be_patched)
+
+			command = [program, path, *p_maxdepth, \
+				'(', *p_all, '-fprintf', "/dev/fd/#{f1.to_i}", 'found %s %y %p\n', ')', ',', \
+				'(', '-type', "d", '-fprintf', "/dev/fd/#{f2.to_i}", 'dir _ _ %p\n', ')']
+
 			exec *command
 			exit!
 		end
@@ -337,28 +344,36 @@ class SearchAgentFind
 							buffer1 = lines.pop
 						end
 
+						dir = ''
+
 						lines.each do |line|
 							line = line.strip
 							next if line == ''
 
 							#puts "found #{line}"
 
-							size, type, filename = line.split(' ', 3)
-							h = Hash[
-								'filename' => filename,
-								'size' => size,
-								'type' => type,
-							]
-							if !content.empty?
-								grep(h, pattern)
+							source, size, type, filename = line.split(' ', 4)
+							if source == 'dir'
+								dir = filename
 							else
-								@dogfish.find_add_result(h)
+								h = Hash[
+									'filename' => filename,
+									'size' => size,
+									'type' => type,
+								]
+								if !content.empty?
+									grep(h, pattern)
+								else
+									@dogfish.find_add_result(h)
+								end
 							end
 						end
 
 						if lines.size > 0
 							@dogfish.find_update_stat
 						end
+
+						@dogfish.find_set_status(_('Searching in %s') % dir) if !dir.empty?
 
 						throw :done if f1_eof
 
@@ -368,8 +383,9 @@ class SearchAgentFind
 						buffer2 = lines.pop
 						if lines.size > 0
 							line = lines.pop
+							dir = line.split(' ', 4)[3]
 							#puts "dir #{line}"
-							@dogfish.find_set_status(_('Searching in %s') % line)
+							@dogfish.find_set_status(_('Searching in %s') % dir)
 						end
 					end
 				end
