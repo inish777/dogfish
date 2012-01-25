@@ -255,7 +255,7 @@ class SearchAgentFind
 				'(', *p_all, '-fprintf', "/dev/fd/#{f1.to_i}", '%s %y %p\n', ')', ',', \
 				'(', '-type', "d", '-fprint', "/dev/fd/#{f2.to_i}", ')'
 
-p command
+#p command
 			exec *command
 			exit!
 		end
@@ -424,7 +424,7 @@ class Dogfish < Gtk::Window
 			if event.kind_of? Gdk::EventButton and event.button == 3
 				selection = @treeview_files.selection
 				if iter = selection.selected
-					@selection = iter[0]
+					@selection = iter[3]
 					@file_menu.popup(nil, nil, event.button, event.time)
 				end
 			end
@@ -434,7 +434,7 @@ class Dogfish < Gtk::Window
 		@treeview_files.signal_connect("popup_menu") {
 			selection = @treeview_files.selection
 			if iter = selection.selected
-				@selection = iter[0]
+				@selection = iter[3]
 				@file_menu.popup(nil, nil, 0, Gdk::Event::CURRENT_TIME)
 			end
 		}
@@ -516,6 +516,7 @@ class Dogfish < Gtk::Window
 				row[1] = h['size']
 			end
 			row[2] = 1
+			row[3] = h['filename']
 
 			h['list_row'] = row
 
@@ -529,7 +530,7 @@ class Dogfish < Gtk::Window
 			subrow = @listmodel.append(row)
 			subrow[0] = h['line'].to_s + ': ' + h['content'].to_s
 			subrow[2] = 0
-
+			subrow[3] = h['filename']
 		end
 	end
 
@@ -544,7 +545,7 @@ class Dogfish < Gtk::Window
 
 		@button_find.label = Gtk::Stock::CANCEL
 
-		@listmodel = Gtk::TreeStore.new(String, String, Integer)
+		@listmodel = Gtk::TreeStore.new(String, String, Integer, String)
 		@treeview_files.model = @listmodel
 		@treeview_files.columns_autosize()
 
