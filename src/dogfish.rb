@@ -424,7 +424,7 @@ class Dogfish < Gtk::Window
 			if event.kind_of? Gdk::EventButton and event.button == 3
 				selection = @treeview_files.selection
 				if iter = selection.selected
-					@selection = iter[3]
+					@selection = iter
 					@file_menu.popup(nil, nil, event.button, event.time)
 				end
 			end
@@ -434,7 +434,7 @@ class Dogfish < Gtk::Window
 		@treeview_files.signal_connect("popup_menu") {
 			selection = @treeview_files.selection
 			if iter = selection.selected
-				@selection = iter[3]
+				@selection = iter
 				@file_menu.popup(nil, nil, 0, Gdk::Event::CURRENT_TIME)
 			end
 		}
@@ -455,6 +455,8 @@ class Dogfish < Gtk::Window
 	def initialize_file_menu
 		actions = [
 			["Open", "xdg-open"],
+			["Open in medit", "medit -l %l %p"],
+			["Open in adie", "adie -l %l %p"],
 			["Open containing folder", "thunar \"%d\""],
 			["Copy file name", "echo \"%p\" | xclip -selection clipboard"],
 		]
@@ -466,12 +468,14 @@ class Dogfish < Gtk::Window
 			item.signal_connect("activate") do |widget|
 				a = action[1]
 
-				file_path = @selection
+				file_path = @selection[3]
+				file_line = @selection[4]
 				file_dirname = File.dirname(file_path)
 
 				m = false
 				a = a.gsub(/%./) do |match|
 					case match
+						when "%l" then file_line.to_s
 						when "%p" then m = true ; file_path
 						when "%d" then m = true ; file_dirname
 						else match
@@ -517,6 +521,7 @@ class Dogfish < Gtk::Window
 			end
 			row[2] = 1
 			row[3] = h['filename']
+			row[4] = 0
 
 			h['list_row'] = row
 
@@ -531,6 +536,7 @@ class Dogfish < Gtk::Window
 			subrow[0] = h['line'].to_s + ': ' + h['content'].to_s
 			subrow[2] = 0
 			subrow[3] = h['filename']
+			subrow[4] = h['line'].to_i
 		end
 	end
 
@@ -545,7 +551,7 @@ class Dogfish < Gtk::Window
 
 		@button_find.label = Gtk::Stock::CANCEL
 
-		@listmodel = Gtk::TreeStore.new(String, String, Integer, String)
+		@listmodel = Gtk::TreeStore.new(String, String, Integer, String, Integer)
 		@treeview_files.model = @listmodel
 		@treeview_files.columns_autosize()
 
