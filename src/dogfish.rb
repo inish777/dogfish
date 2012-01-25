@@ -189,7 +189,7 @@ class SearchAgentFind
 					if line[pattern]
 						h1 = h.clone
 						h1['line'] = linenr
-						h1['content'] = line.sub("\n", '')
+						h1['content'] = line.gsub(/[\n\r]*/, '')
 						@dogfish.find_add_result(h1)
 					end
 					linenr += 1
@@ -214,11 +214,11 @@ class SearchAgentFind
 					if line[pattern]
 						h1 = h.clone
 						h1['line'] = linenr
-						h1['content'] = line.sub("\n", '')
+						h1['content'] = line.gsub(/[\n\r]*/, '')
 						@dogfish.find_add_result(h1)
 					end
 					linenr += 1
-					if linenr % 200 == 0
+					if linenr % 400 == 0
 						@dogfish.find_set_status(
 							('Scanning %s (%s of %s)') % [filename,
 								human_readable_size(bytesscanned),
