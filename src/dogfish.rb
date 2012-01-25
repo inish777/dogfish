@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'gtk2'
+require 'shellwords'
 #require 'libglade2'
 #require 'gettext'
 
@@ -476,13 +477,12 @@ class Dogfish < Gtk::Window
 				a = a.gsub(/%./) do |match|
 					case match
 						when "%l" then file_line.to_s
-						when "%p" then m = true ; file_path
-						when "%d" then m = true ; file_dirname
+						when "%p" then m = true ; file_path.shellescape
+						when "%d" then m = true ; file_dirname.shellescape
 						else match
 					end
 				end
 				a = "#{a} \"#{file_path}\"" if !m;
-
 				pid = fork { system(a) }
 				Process.detach(pid)
 			end
