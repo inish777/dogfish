@@ -24,6 +24,16 @@ class Dir
 	end
 end
 
+def human_readable_size(size)
+	size = size.to_f
+	if size > (1024 * 1024)
+		'%.2fMiB' %(size / (1024 * 1024))
+	elsif size > 1024
+		'%.2fKiB' %(size / 1024)
+	else
+		size.to_i.to_s + 'B'
+	end
+end
 
 class HistoryDispatcher
 
@@ -159,15 +169,23 @@ class SearchAgentFind
 	end
 
 	def grep(h, pattern)
-#puts "Scanning file #{h['filename']}"
-		return if !File.readable?(h['filename'])
+		filename = h['filename']
+		filesize = h['size'].to_f
+		bytesscanned = 0;
+
+		#p "Scanning file #{filename}"
+
+		return if !File.readable?(filename)
+
+		@dogfish.find_set_status(_('Scanning %s (%s)') % [filename, human_readable_size(filesize) ] )
 
 		linenr = 1
-		File.open(h['filename']) do |file|
+		File.open(filename) do |file|
 			restart = false
 			begin
 				while !file.eof
 					line = file.gets
+					bytesscanned += line.size
 					if line[pattern]
 						h1 = h.clone
 						h1['line'] = linenr
@@ -175,7 +193,11 @@ class SearchAgentFind
 						@dogfish.find_add_result(h1)
 					end
 					linenr += 1
-					if linenr % 200 == 0
+					if linenr % 800 == 0
+						@dogfish.find_set_status(
+							('Scanning %s (%s of %s)') % [filename,
+								human_readable_size(bytesscanned),
+								human_readable_size(filesize) ] )
 						return if @dogfish.update_gui
 					end
 				end
@@ -186,6 +208,7 @@ class SearchAgentFind
 			if restart
 				while !file.eof
 					line = file.gets
+					bytesscanned += line.size
 					line = line.
 						force_encoding("UTF-8").encode("UTF-16BE", :invalid=>:replace, :replace=>"?").encode("UTF-8")
 					if line[pattern]
@@ -195,7 +218,11 @@ class SearchAgentFind
 						@dogfish.find_add_result(h1)
 					end
 					linenr += 1
-					if linenr % 50 == 0
+					if linenr % 200 == 0
+						@dogfish.find_set_status(
+							('Scanning %s (%s of %s)') % [filename,
+								human_readable_size(bytesscanned),
+								human_readable_size(filesize) ] )
 						return if @dogfish.update_gui
 					end
 				end
