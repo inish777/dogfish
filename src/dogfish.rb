@@ -455,7 +455,6 @@ class SearchAgentLocate
 	end
 
 	def do_search()
-		@dogfish.
 		file_name = @entry_locate_text.child().text
 		path = @entry_locate_path.child().text
 		@history_dispatcher.save("locate")
@@ -482,7 +481,8 @@ class Dogfish < Gtk::Window
 	def initialize
 		super
 		@history_dispatcher = HistoryDispatcher.new
-		@agent = SearchAgentFind.new(self, @history_dispatcher)
+		#@agent = SearchAgentFind.new(self, @history_dispatcher)
+		@agent = SearchAgentLocate.new(self, @history_dispatcher)
 
 		@found_files = []
 		@found_files_by_path = Hash[]
