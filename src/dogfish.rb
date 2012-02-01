@@ -463,10 +463,15 @@ class SearchAgentLocate
 		else
 			pipe = IO.popen("locate -r '#{file_name}' ", "r")
 		end
+		i = 0;
 		while(a = pipe.gets())
 			h = Hash["filename" => a.strip()]
 			@dogfish.find_add_result(h)
-			return if @dogfish.update_gui
+			i += 1
+			if i % 30 == 0
+				@dogfish.find_update_stat
+				return if @dogfish.update_gui
+			end
 		end
 	end
 end
