@@ -639,6 +639,18 @@ class Dogfish < Gtk::Window
 
 		if !@found_files_by_path.has_key?(h['filename'])
 
+			if !h.has_key?('type')
+				if File.directory?(h['filename'])
+					h['type'] = 'd'
+				end
+			end
+			if !h.has_key?('size')
+				begin
+					h['size'] = File.size(h['filename'])
+				rescue
+				end
+			end
+
 			row = @listmodel.append(nil)
 			row[0] = h['filename']
 
@@ -656,6 +668,7 @@ class Dogfish < Gtk::Window
 			@found_files << h
 			@found_files_by_path[h['filename']] = h
 		end
+
 
 		if h.has_key?('content') || h.has_key?('line')
 			row = @found_files_by_path[h['filename']]['list_row']
