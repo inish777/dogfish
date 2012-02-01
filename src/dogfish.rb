@@ -466,6 +466,7 @@ class SearchAgentLocate
 		while(a = pipe.gets())
 			h = Hash["filename" => a.strip()]
 			@dogfish.find_add_result(h)
+			return if @dogfish.update_gui
 		end
 	end
 end
