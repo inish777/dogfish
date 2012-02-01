@@ -404,6 +404,73 @@ class SearchAgentFind
 
 end
 
+class SearchAgentLocate
+
+	def initialize(dogfish, history_dispatcher)
+		@dogfish = dogfish
+		@history_dispatcher = history_dispatcher
+	end
+
+	def is_regexp_check_button_toggled(check_button)
+	if(check_button.active) then
+		@entry_locate_path.set_state(STATE_INSENSETIVE)
+	else
+		@entry_locate_path.set_state(STATE_ACTIVE)
+	end
+
+	end
+	
+	def build_gui(box)
+		@search_box = box
+
+		t = Gtk::Table.new(5, 5)
+		@search_box.pack_start t, false
+
+		l = Gtk::Label.new(_('_File name'), true)
+		l.set_alignment(0, 0.5)
+		t.attach l, 0, 1, 0, 1, Gtk::SHRINK|Gtk::FILL, Gtk::FILL, 2
+		l.mnemonic_widget = @entry_locate_text = Gtk::ComboBoxEntry.new()
+		t.attach @entry_locate_text, 1, 2, 0, 1
+		@history_dispatcher.register_widget(@entry_locate_text, "locate", "file_name")
+		
+		l = @is_regexp_check_button = Gtk::CheckButton.new("Regexp")
+		l.set_alignment(0, 0.5)
+		l.signal_connect("toggled"){
+			if(@is_regexp_check_button.active?) then
+				@entry_locate_path.set_sensitive(false)
+			else
+				@entry_locate_path.set_sensitive(true)
+			end
+		}
+		t.attach l, 0, 1, 1, 2, Gtk::SHRINK|Gtk::FILL, Gtk::FILL, 2
+
+		l = Gtk::Label.new(_('_Path'), true)
+		l.set_alignment(0, 0.5)
+		t.attach l, 0, 2, 2, 3  , Gtk::SHRINK|Gtk::FILL, Gtk::FILL, 2
+		l.mnemonic_widget = @entry_locate_path = Gtk::ComboBoxEntry.new()
+		t.attach @entry_locate_path, 1, 2 , 2, 3
+		@entry_locate_path.child().text = "/"
+		@history_dispatcher.register_widget(@entry_locate_path, "locate", "path")
+		
+	end
+
+	def do_search()
+		@dogfish.
+		file_name = @entry_locate_text.child().text
+		path = @entry_locate_path.child().text
+		@history_dispatcher.save("locate")
+		if(@is_regexp_check_button.active?) then
+			pipe = IO.popen("locate #{path + "/" + file_name}", "r")
+		else
+			pipe = IO.popen("locate -r '#{file_name}' ", "r")
+		end
+		while(a = pipe.gets())
+			h = Hash["filename" => a.strip()]
+			@dogfish.find_add_result(h)
+		end
+	end
+end
+
 class Dogfish < Gtk::Window
 
 #	include GetText
