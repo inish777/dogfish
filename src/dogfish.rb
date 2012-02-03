@@ -663,6 +663,14 @@ class Dogfish < Gtk::Window
 	end
 
 	def grep(h, pattern)
+
+		if !h.has_key?('size')
+			begin
+				h['size'] = File.size(h['filename'])
+			rescue
+			end
+		end
+
 		filename = h['filename']
 		filesize = h['size'].to_f
 		bytesscanned = 0;
