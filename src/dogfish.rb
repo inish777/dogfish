@@ -192,68 +192,6 @@ class SearchAgentFind
 
 	end
 
-	def grep(h, pattern)
-		filename = h['filename']
-		filesize = h['size'].to_f
-		bytesscanned = 0;
-
-		#p "Scanning file #{filename}"
-
-		return if !File.readable?(filename)
-
-		@dogfish.find_set_status(_('Scanning %s (%s)') % [filename, human_readable_size(filesize) ] )
-
-		linenr = 1
-		File.open(filename) do |file|
-			restart = false
-			begin
-				while !file.eof
-					line = file.gets
-					bytesscanned += line.size
-					if line[pattern]
-						h1 = h.clone
-						h1['line'] = linenr
-						h1['content'] = line.gsub(/[\n\r]*/, '')
-						@dogfish.find_add_result(h1)
-					end
-					linenr += 1
-					if linenr % 800 == 0
-						@dogfish.find_set_status(
-							('Scanning %s (%s of %s)') % [filename,
-								human_readable_size(bytesscanned),
-								human_readable_size(filesize) ] )
-						return if @dogfish.update_gui
-					end
-				end
-			rescue ArgumentError => e
-				restart = true
-			end
-
-			if restart
-				while !file.eof
-					line = file.gets
-					bytesscanned += line.size
-					line = line.
-						force_encoding("UTF-8").encode("UTF-16BE", :invalid=>:replace, :replace=>"?").encode("UTF-8")
-					if line[pattern]
-						h1 = h.clone
-						h1['line'] = linenr
-						h1['content'] = line.gsub(/[\n\r]*/, '')
-						@dogfish.find_add_result(h1)
-					end
-					linenr += 1
-					if linenr % 400 == 0
-						@dogfish.find_set_status(
-							('Scanning %s (%s of %s)') % [filename,
-								human_readable_size(bytesscanned),
-								human_readable_size(filesize) ] )
-						return if @dogfish.update_gui
-					end
-				end
-			end # restart
-		end # open
-	end
-
 	def do_search
 		text = @entry_find_text.child().text	
 		path = @entry_find_path.child().text
@@ -382,7 +320,7 @@ class SearchAgentFind
 									'type' => type,
 								]
 								if !content.empty?
-									grep(h, pattern)
+									@dogfish.grep(h, pattern)
 								else
 									@dogfish.find_add_result(h)
 								end
@@ -704,6 +642,68 @@ class Dogfish < Gtk::Window
 	def find_set_status(text)
 		@statusbar.push(@statusbar.get_context_id('results'), text)
 		Gtk.main_iteration while Gtk.events_pending?
+	end
+
+	def grep(h, pattern)
+		filename = h['filename']
+		filesize = h['size'].to_f
+		bytesscanned = 0;
+
+		#p "Scanning file #{filename}"
+
+		return if !File.readable?(filename)
+
+		find_set_status(_('Scanning %s (%s)') % [filename, human_readable_size(filesize) ] )
+
+		linenr = 1
+		File.open(filename) do |file|
+			restart = false
+			begin
+				while !file.eof
+					line = file.gets
+					bytesscanned += line.size
+					if line[pattern]
+						h1 = h.clone
+						h1['line'] = linenr
+						h1['content'] = line.gsub(/[\n\r]*/, '')
+						find_add_result(h1)
+					end
+					linenr += 1
+					if linenr % 800 == 0
+						find_set_status(
+							('Scanning %s (%s of %s)') % [filename,
+								human_readable_size(bytesscanned),
+								human_readable_size(filesize) ] )
+						return if update_gui
+					end
+				end
+			rescue ArgumentError => e
+				restart = true
+			end
+
+			if restart
+				while !file.eof
+					line = file.gets
+					bytesscanned += line.size
+					line = line.
+						force_encoding("UTF-8").encode("UTF-16BE", :invalid=>:replace, :replace=>"?").encode("UTF-8")
+					if line[pattern]
+						h1 = h.clone
+						h1['line'] = linenr
+						h1['content'] = line.gsub(/[\n\r]*/, '')
+						find_add_result(h1)
+					end
+					linenr += 1
+					if linenr % 400 == 0
+						find_set_status(
+							('Scanning %s (%s of %s)') % [filename,
+								human_readable_size(bytesscanned),
+								human_readable_size(filesize) ] )
+						return if update_gui
+					end
+				end
+			end # restart
+		end # open
 	end
 
 	def find
