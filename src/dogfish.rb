@@ -1,5 +1,25 @@
 #!/usr/bin/env ruby
 
+# Copyright (c) 2012 Vadim Ushakov
+# Copyright (c) 2012 Andrey Inishev
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
+
+
+
 require 'gtk2'
 require 'shellwords'
 #require 'libglade2'
@@ -487,8 +507,8 @@ class Dogfish < Gtk::Window
 	def initialize
 		super
 		@history_dispatcher = HistoryDispatcher.new
-		#@agent = SearchAgentFind.new(self, @history_dispatcher)
-		@agent = SearchAgentLocate.new(self, @history_dispatcher)
+		@agent = SearchAgentFind.new(self, @history_dispatcher)
+		#@agent = SearchAgentLocate.new(self, @history_dispatcher)
 
 		@found_files = []
 		@found_files_by_path = Hash[]
