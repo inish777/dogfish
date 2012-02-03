@@ -409,12 +409,24 @@ class SearchAgentLocate
 		t.attach @entry_locate_path, 1, 2 , 2, 3
 		@entry_locate_path.child().text = "/"
 		@history_dispatcher.register_widget(@entry_locate_path, "locate", "path")
-		
+
+		l = Gtk::Label.new(_('_Content'), true)
+		l.set_alignment(0, 0.5)
+		t.attach l, 0, 1, 4, 5, Gtk::SHRINK|Gtk::FILL, Gtk::FILL, 2
+		l.mnemonic_widget = @entry_content = Gtk::ComboBoxEntry.new()
+		t.attach @entry_content, 1, 4, 4, 5
+		@entry_content.child().text = ''
+		@history_dispatcher.register_widget(@entry_content, "locate", "content")
+
 	end
 
 	def do_search()
 		file_name = @entry_locate_text.child().text
 		path = @entry_locate_path.child().text
+		content = @entry_content.child().text
+
+		pattern = Regexp.new(content)
+
 		@history_dispatcher.save("locate")
 		if(@is_regexp_check_button.active?) then
 			pipe = IO.popen("locate #{path + "/" + file_name}", "r")
@@ -424,7 +436,13 @@ class SearchAgentLocate
 		i = 0;
 		while(a = pipe.gets())
 			h = Hash["filename" => a.strip()]
-			@dogfish.find_add_result(h)
+
+			if !content.empty?
+				@dogfish.grep(h, pattern)
+			else
+				@dogfish.find_add_result(h)
+			end
+
 			i += 1
 			if i % 30 == 0
 				@dogfish.find_update_stat
@@ -445,8 +463,8 @@ class Dogfish < Gtk::Window
 	def initialize
 		super
 		@history_dispatcher = HistoryDispatcher.new
-		@agent = SearchAgentFind.new(self, @history_dispatcher)
-		#@agent = SearchAgentLocate.new(self, @history_dispatcher)
+		#@agent = SearchAgentFind.new(self, @history_dispatcher)
+		@agent = SearchAgentLocate.new(self, @history_dispatcher)
 
 		@found_files = []
 		@found_files_by_path = Hash[]
@@ -651,7 +669,7 @@ class Dogfish < Gtk::Window
 
 		#p "Scanning file #{filename}"
 
-		return if !File.readable?(filename)
+		return if !File.readable?(filename) || !File.file?(filename)
 
 		find_set_status(_('Scanning %s (%s)') % [filename, human_readable_size(filesize) ] )
 
