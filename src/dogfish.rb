@@ -62,7 +62,7 @@ end
 class HistoryDispatcher
 
 	def initialize()
-		@widgets = Hash.new(Hash.new)
+		@widgets = Hash.new{Hash.new}
 	end
 
 	def get_history_list(agent_id, widget_id, to_append = [])
@@ -452,7 +452,7 @@ class SearchAgentLocate
 	end
 end
 
-class Dogfish < Gtk::Window
+class Dogfish #< Gtk::Window
 
 #	include GetText
 #	bindtextdomain("dogfish")
@@ -460,35 +460,66 @@ class Dogfish < Gtk::Window
 	attr_reader :force_exit
 	attr_reader :stop_search
 
-	def initialize
-		super
-		@history_dispatcher = HistoryDispatcher.new
-		#@agent = SearchAgentFind.new(self, @history_dispatcher)
-		@agent = SearchAgentLocate.new(self, @history_dispatcher)
+	def initialize(main, window_box)
 
+		@history_dispatcher = HistoryDispatcher.new
+		@agent = SearchAgentFind.new(self, @history_dispatcher)
+		#@agent = SearchAgentLocate.new(self, @history_dispatcher)
+        @window_box = window_box
+        @main = main
 		@found_files = []
 		@found_files_by_path = Hash[]
-
-		@window = Gtk::Window.new
-		@window_box = Gtk::VBox.new()
-		@window.add @window_box
-
-		@window.title = "dogfish"
-		@window.default_width = 750
-		@window.default_height = 500
-
+        
 		# Search box
 
 		@search_box = Gtk::HBox.new()
 		@window_box.pack_start @search_box, false
 
-		agent_gui_box = Gtk::VBox.new()
-		@search_box.pack_start agent_gui_box, true
+		@agent_gui_box = Gtk::VBox.new()
+		@search_box.pack_start @agent_gui_box, true
 
-		@agent.build_gui(agent_gui_box)
+		@agent.build_gui(@agent_gui_box)
 
 		@button_find = Gtk::Button.new(Gtk::Stock::FIND)
 		@search_box.pack_start @button_find, false
+
+		@change_agent = Gtk::ComboBox.new(true)
+		@search_box.pack_start @change_agent, false
+		["find", "locate"].each {|x| @change_agent.prepend_text(x)}
+        @change_agent.set_active(1)
+        		    
+        @new_tab_button = Gtk::Button.new("New tab")
+        @search_box.pack_start @new_tab_button, false
+        @new_tab_button.signal_connect("clicked"){
+            @main.new_tab()
+        }
+        
+        @close_tab_button = Gtk::Button.new("Close tab")
+        @search_box.pack_start @close_tab_button, false
+        @close_tab_button.signal_connect("clicked"){
+            @main.notebook().remove_page(@main.curr_page_num())
+        }
+        
+		@change_agent.signal_connect("changed"){
+			if (@change_agent.active_text() == "find") then
+				@agent_gui_box.destroy
+				@agent_gui_box = Gtk::VBox.new()
+				@search_box.pack_start @agent_gui_box
+				@search_box.reorder_child @agent_gui_box, 0
+				@agent = SearchAgentFind.new(self, @history_dispatcher)
+				@agent.build_gui(@agent_gui_box)
+				@main.window().show_all
+			elsif (@change_agent.active_text() == "locate") then
+				@agent_gui_box.destroy
+				@agent_gui_box = Gtk::VBox.new()
+				@search_box.pack_start @agent_gui_box
+				@search_box.reorder_child @agent_gui_box, 0
+				@agent = SearchAgentLocate.new(self, @history_dispatcher)
+				@agent.build_gui(@agent_gui_box)
+				@main.window().show_all
+			end
+
+		}
 
 		# Treeview
 
@@ -520,7 +551,6 @@ class Dogfish < Gtk::Window
 		@statusbar.add @found_label
 
 
-		@window.signal_connect('destroy'){self.on_button_close_clicked}
 		@button_find.signal_connect('clicked'){self.on_button_find_clicked}
 
 		initialize_file_menu
@@ -548,12 +578,6 @@ class Dogfish < Gtk::Window
 		@force_exit = false
 		@stop_search = false
 		@searching = false
-
-
-		@window.show_all
-
-		# Start GTK processing
-		Gtk.main()
 	end
 
 
@@ -592,11 +616,6 @@ class Dogfish < Gtk::Window
 			end
 		end
 		@file_menu.show_all
-	end
-
-	def on_button_close_clicked
-		@force_exit = true;
-		Gtk.main_quit
 	end
 
 	def find_update_stat
@@ -777,4 +796,49 @@ class Dogfish < Gtk::Window
 
 end
 
-Dogfish.new
+class Main
+    def initialize()
+            super
+            @window = Gtk::Window.new
+	    	@notebook = Gtk::Notebook.new()
+	    	@window.title = "dogfish"
+	    	@window.default_width = 750
+	    	@window.default_height = 500
+	    	@window.signal_connect('destroy'){self.on_button_close_clicked}
+	    	@window_box = Gtk::VBox.new()
+	    	@window.add @notebook
+	    	@notebook.append_page @window_box
+	    	@notebook.signal_connect("switch-page"){|notebook, page, page_num| @curr_page_num = page_num}
+	    	@dogfish = Dogfish.new(self, @window_box)
+	    	@window.show_all
+    
+	    	# Start GTK processing
+	    	Gtk.main()
+    end
+
+    def new_tab()
+        window_box = Gtk::VBox.new()
+        @notebook.append_page window_box
+        dogfish = Dogfish.new(self, window_box)
+        @window.show_all
+    end
+
+    def window
+        @window
+    end
+    
+    def notebook
+        @notebook
+    end
+    
+    def on_button_close_clicked
+		@force_exit = true;
+		Gtk.main_quit
+    end
+    
+    def curr_page_num
+        @curr_page_num
+    end
+end
+
+Main.new
